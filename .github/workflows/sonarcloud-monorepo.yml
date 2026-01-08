@@ -20,7 +20,7 @@ jobs:
         with:
           args: >
             -Dsonar.organization=rmurier
-            -Dsonar.projectKey=bac5_cube1_collaboratif
+            -Dsonar.projectKey=RMurier_BAC-5-CUBE-1-COLLABORATIF
             -Dsonar.projectName=BAC-5-CUBE-1-COLLABORATIF
             -Dsonar.sources=.
             -Dsonar.host.url=https://sonarcloud.io
