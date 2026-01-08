@@ -70,8 +70,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
 
-          # IMPORTANT: remplace par le nom exact de ton org SonarCloud
-          SONAR_ORG: goodfood
+          SONAR_ORG: rmurier
         with:
           args: >
             -Dsonar.organization=${{ env.SONAR_ORG }}
