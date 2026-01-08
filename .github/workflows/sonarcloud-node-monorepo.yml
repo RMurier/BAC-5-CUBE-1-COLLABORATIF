@@ -1,0 +1,81 @@
+name: SonarCloud (Node monorepo)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  sonarcloud:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mobile
+            workdir: goodfood-mobile
+            project_key: goodfood_mobile
+            project_name: GoodFood.Mobile
+            token_secret: SONAR_TOKEN_MOBILE
+
+          - name: front_web
+            workdir: goodfood-front-web
+            project_key: goodfood_front_web
+            project_name: GoodFood.FrontWeb
+            token_secret: SONAR_TOKEN_FRONT_WEB
+
+          - name: paiement
+            workdir: goodfood-ms-paiement
+            project_key: goodfood_paiement
+            project_name: GoodFood.Paiement
+            token_secret: SONAR_TOKEN_PAIEMENT
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.workdir }}/package-lock.json
+
+      - name: Install deps
+        working-directory: ${{ matrix.workdir }}
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm i; fi
+
+      - name: Build (if present)
+        working-directory: ${{ matrix.workdir }}
+        run: npm run build --if-present
+
+      - name: Resolve SONAR_TOKEN (ms token fallback to global)
+        id: token
+        env:
+          MS_TOKEN: ${{ secrets[matrix.token_secret] }}
+          GLOBAL_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          TOKEN="$MS_TOKEN"
+          if [ -z "$TOKEN" ]; then TOKEN="$GLOBAL_TOKEN"; fi
+          if [ -z "$TOKEN" ]; then
+            echo "Missing token: define ${{ matrix.token_secret }} or SONAR_TOKEN"
+            exit 1
+          fi
+          echo "SONAR_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+
+          # IMPORTANT: remplace par le nom exact de ton org SonarCloud
+          SONAR_ORG: goodfood
+        with:
+          args: >
+            -Dsonar.organization=${{ env.SONAR_ORG }}
+            -Dsonar.projectKey=${{ matrix.project_key }}
+            -Dsonar.projectName=${{ matrix.project_name }}
+            -Dsonar.sources=.
+            -Dsonar.host.url=https://sonarcloud.io
