@@ -1,0 +1,12 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0
+
+WORKDIR /app
+
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+ENV DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true
+
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "watch", "run", "--project", "GoodFood.Sav.Api/GoodFood.Sav.Api.csproj", "--no-hot-reload", "--no-launch-profile"]

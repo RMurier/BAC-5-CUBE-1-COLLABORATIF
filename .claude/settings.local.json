@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.figma.com)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker restart:*)",
+      "Bash(for service in auth commandes tracking sav notifications logs stock fournisseurs restaurant paiement)",
+      "Bash(do echo \"=== ms-$service-dev ===\")",
+      "Bash(done)",
+      "Bash(curl:*)",
+      "Bash(docker exec:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(gh auth:*)"
+    ]
+  }
+}

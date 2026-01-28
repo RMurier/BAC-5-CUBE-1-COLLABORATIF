@@ -1,0 +1,270 @@
+name: goodfood-prod
+
+services:
+  # ===================
+  # DATABASES
+  # ===================
+
+  db-sql-prod:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: goodfood-db-sql-prod
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:-ProdPassword123!}
+      MSSQL_PID: "Developer"
+    ports:
+      - "1434:1433"
+    volumes:
+      - goodfood-sql-prod-data:/var/opt/mssql
+    networks:
+      - goodfood-prod-network
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${SQL_SA_PASSWORD:-ProdPassword123!}" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  db-mongo-prod:
+    image: mongo:7
+    container_name: goodfood-db-mongo-prod
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-ProdPassword123!}
+    ports:
+      - "27018:27017"
+    volumes:
+      - goodfood-mongo-prod-data:/data/db
+    networks:
+      - goodfood-prod-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===================
+  # FRONTEND
+  # ===================
+
+  front-web-prod:
+    build:
+      context: ./goodfood-front-web
+      dockerfile: Dockerfile
+    container_name: goodfood-front-web-prod
+    ports:
+      - "4000:8080"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_AUTH_URL=http://localhost:4001
+      - VITE_API_RESTAURANT_URL=http://localhost:4002
+      - VITE_API_PAIEMENT_URL=http://localhost:4003
+      - VITE_API_COMMANDES_URL=http://localhost:4004
+      - VITE_API_TRACKING_URL=http://localhost:4005
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      - ms-auth-prod
+    restart: unless-stopped
+
+  # ===================
+  # MICROSERVICES
+  # ===================
+
+  ms-auth-prod:
+    build:
+      context: ./goodfood-ms-auth
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: goodfood-ms-auth-prod
+    ports:
+      - "4001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db-sql-prod;Database=GoodFood_Auth;User Id=sa;Password=${SQL_SA_PASSWORD:-ProdPassword123!};TrustServerCertificate=true
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-restaurant-prod:
+    build:
+      context: ./goodfood-ms-restaurant
+      dockerfile: Dockerfile
+    container_name: goodfood-ms-restaurant-prod
+    ports:
+      - "4002:8080"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=mssql+pyodbc://sa:${SQL_SA_PASSWORD:-ProdPassword123!}@db-sql-prod:1433/GoodFood_Restaurant?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-paiement-prod:
+    build:
+      context: ./goodfood-ms-paiement
+      dockerfile: Dockerfile
+    container_name: goodfood-ms-paiement-prod
+    ports:
+      - "4003:8080"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=sqlserver://db-sql-prod:1433;database=GoodFood_Paiement;user=sa;password=${SQL_SA_PASSWORD:-ProdPassword123!};trustServerCertificate=true
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-commandes-prod:
+    build:
+      context: ./goodfood-ms-commandes
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: goodfood-ms-commandes-prod
+    ports:
+      - "4004:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db-sql-prod;Database=GoodFood_Commandes;User Id=sa;Password=${SQL_SA_PASSWORD:-ProdPassword123!};TrustServerCertificate=true
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-tracking-prod:
+    build:
+      context: ./goodfood-ms-tracking
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: goodfood-ms-tracking-prod
+    ports:
+      - "4005:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__MongoDB=mongodb://admin:${MONGO_PASSWORD:-ProdPassword123!}@db-mongo-prod:27017/GoodFood_Tracking?authSource=admin
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-mongo-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-sav-prod:
+    build:
+      context: ./goodfood-ms-sav
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: goodfood-ms-sav-prod
+    ports:
+      - "4006:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db-sql-prod;Database=GoodFood_SAV;User Id=sa;Password=${SQL_SA_PASSWORD:-ProdPassword123!};TrustServerCertificate=true
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-notifications-prod:
+    build:
+      context: ./goodfood-ms-notifications
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: goodfood-ms-notifications-prod
+    ports:
+      - "4007:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db-sql-prod;Database=GoodFood_Notifications;User Id=sa;Password=${SQL_SA_PASSWORD:-ProdPassword123!};TrustServerCertificate=true
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-logs-prod:
+    build:
+      context: ./goodfood-ms-logs
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: goodfood-ms-logs-prod
+    ports:
+      - "4008:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db-sql-prod;Database=GoodFood_Logs;User Id=sa;Password=${SQL_SA_PASSWORD:-ProdPassword123!};TrustServerCertificate=true
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-stock-prod:
+    build:
+      context: ./goodfood-ms-stock
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: goodfood-ms-stock-prod
+    ports:
+      - "4009:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db-sql-prod;Database=GoodFood_Stock;User Id=sa;Password=${SQL_SA_PASSWORD:-ProdPassword123!};TrustServerCertificate=true
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ms-fournisseurs-prod:
+    build:
+      context: ./goodfood-ms-fournisseurs
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: goodfood-ms-fournisseurs-prod
+    ports:
+      - "4010:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db-sql-prod;Database=GoodFood_Fournisseurs;User Id=sa;Password=${SQL_SA_PASSWORD:-ProdPassword123!};TrustServerCertificate=true
+    networks:
+      - goodfood-prod-network
+    depends_on:
+      db-sql-prod:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  goodfood-prod-network:
+    driver: bridge
+
+volumes:
+  goodfood-sql-prod-data:
+  goodfood-mongo-prod-data:
