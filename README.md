@@ -263,7 +263,6 @@ goodfood/
 ├── docker-compose.dev.yml      # Development environment
 ├── docker-compose.prod.yml     # Production environment
 ├── .env.example                # Environment variables template
-├── CLAUDE.md                   # AI assistant context
 └── README.md                   # This file
 ```
 
