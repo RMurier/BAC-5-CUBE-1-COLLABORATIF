@@ -1,0 +1,30 @@
+global:
+  environment: production
+
+ingress:
+  host: goodfood.example.com
+  tls:
+    enabled: true
+    secretName: goodfood-tls
+
+services:
+  frontWeb:
+    replicas: 2
+    image:
+      pullPolicy: Always
+
+  msAuth:
+    replicas: 2
+    image:
+      pullPolicy: Always
+
+  msPaiement:
+    replicas: 2
+    image:
+      pullPolicy: Always
+
+secrets:
+  enabled: true
+  data:
+    STRIPE_SECRET_KEY: "REPLACE_ME"
+    STRIPE_WEBHOOK_SECRET: "REPLACE_ME"

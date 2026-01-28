@@ -1,0 +1,18 @@
+global:
+  environment: local
+
+ingress:
+  host: goodfood.local
+  tls:
+    enabled: false
+
+services:
+  frontWeb:
+    image:
+      pullPolicy: IfNotPresent
+    replicas: 1
+
+  msPaiement:
+    image:
+      pullPolicy: IfNotPresent
+    replicas: 1

@@ -1,0 +1,204 @@
+global:
+  namespace: goodfood
+  environment: production
+  imagePullSecrets: []
+
+  commonEnv:
+    ASPNETCORE_ENVIRONMENT: "Production"
+
+ingress:
+  enabled: true
+  className: traefik
+  host: goodfood.local
+  tls:
+    enabled: false
+    secretName: ""
+
+services:
+  frontWeb:
+    enabled: true
+    type: web
+    name: front-web
+    port: 8080
+    path: /
+    image:
+      repository: ghcr.io/rmurier/goodfood-front-web
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    probes:
+      enabled: true
+      path: /health
+
+  msAuth:
+    enabled: true
+    type: dotnet
+    name: ms-auth
+    port: 8080
+    path: /api/auth
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-auth
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+    probes:
+      enabled: true
+      path: /health
+
+  msCommandes:
+    enabled: true
+    type: dotnet
+    name: ms-commandes
+    port: 8080
+    path: /api/commandes
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-commandes
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+    probes:
+      enabled: true
+      path: /health
+
+  msTracking:
+    enabled: true
+    type: dotnet
+    name: ms-tracking
+    port: 8080
+    path: /api/tracking
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-tracking
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+    probes:
+      enabled: true
+      path: /health
+
+  msSav:
+    enabled: true
+    type: dotnet
+    name: ms-sav
+    port: 8080
+    path: /api/sav
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-sav
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+    probes:
+      enabled: true
+      path: /health
+
+  msNotifications:
+    enabled: true
+    type: dotnet
+    name: ms-notifications
+    port: 8080
+    path: /api/notifications
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-notifications
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+    probes:
+      enabled: true
+      path: /health
+
+  msLogs:
+    enabled: true
+    type: dotnet
+    name: ms-logs
+    port: 8080
+    path: /api/logs
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-logs
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+    probes:
+      enabled: true
+      path: /health
+
+  msStock:
+    enabled: true
+    type: dotnet
+    name: ms-stock
+    port: 8080
+    path: /api/stock
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-stock
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+    probes:
+      enabled: true
+      path: /health
+
+  msFournisseurs:
+    enabled: true
+    type: dotnet
+    name: ms-fournisseurs
+    port: 8080
+    path: /api/fournisseurs
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-fournisseurs
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      ASPNETCORE_URLS: "http://0.0.0.0:8080"
+    probes:
+      enabled: true
+      path: /health
+
+  msPaiement:
+    enabled: true
+    type: next
+    name: ms-paiement
+    port: 8080
+    path: /api/paiement
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-paiement
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      NODE_ENV: "production"
+      PORT: "8080"
+    probes:
+      enabled: true
+      path: /api/health
+
+  msRestaurant:
+    enabled: true
+    type: flask
+    name: ms-restaurant
+    port: 8080
+    path: /api/restaurant
+    image:
+      repository: ghcr.io/rmurier/goodfood-ms-restaurant
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 1
+    probes:
+      enabled: true
+      path: /health
+
+secrets:
+  enabled: false
+  data: {}

@@ -1,0 +1,59 @@
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $svc.name }}
+  labels:
+    app: {{ $svc.name }}
+spec:
+  replicas: {{ $svc.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ $svc.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $svc.name }}
+    spec:
+      {{- if $.Values.global.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml $.Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $svc.name }}
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: {{ $svc.port | default 8080 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "goodfood.fullname" $ }}-common
+            {{- if $.Values.secrets.enabled }}
+            - secretRef:
+                name: {{ include "goodfood.fullname" $ }}-secrets
+            {{- end }}
+          {{- if $svc.env }}
+          env:
+            {{- range $k, $v := $svc.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- end }}
+          {{- if and $svc.probes $svc.probes.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.probes.path | default "/health" }}
+              port: {{ $svc.port | default 8080 }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.probes.path | default "/health" }}
+              port: {{ $svc.port | default 8080 }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          {{- end }}
+---
+{{- end }}
+{{- end }}

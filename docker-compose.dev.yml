@@ -1,0 +1,287 @@
+name: goodfood-dev
+
+services:
+  # ===================
+  # DATABASES
+  # ===================
+
+  db-sql-dev:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: goodfood-db-sql-dev
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "GoodFood2024!Secure"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - goodfood-sql-dev-data:/var/opt/mssql
+    networks:
+      - goodfood-dev-network
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "GoodFood2024!Secure" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  db-mongo-dev:
+    image: mongo:7
+    container_name: goodfood-db-mongo-dev
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: GoodFood2024!Secure
+    ports:
+      - "27017:27017"
+    volumes:
+      - goodfood-mongo-dev-data:/data/db
+    networks:
+      - goodfood-dev-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===================
+  # FRONTEND (Hot Reload)
+  # ===================
+
+  front-web-dev:
+    build:
+      context: ./goodfood-front-web
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-front-web-dev
+    ports:
+      - "3000:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_AUTH_URL=http://localhost:3001
+      - VITE_API_RESTAURANT_URL=http://localhost:3002
+      - VITE_API_PAIEMENT_URL=http://localhost:3003
+      - VITE_API_COMMANDES_URL=http://localhost:3004
+      - VITE_API_TRACKING_URL=http://localhost:3005
+    volumes:
+      - ./goodfood-front-web:/app
+      - /app/node_modules
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      - ms-auth-dev
+
+  # ===================
+  # MICROSERVICES (Hot Reload)
+  # ===================
+
+  ms-auth-dev:
+    build:
+      context: ./goodfood-ms-auth
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-auth-dev
+    ports:
+      - "3001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db-sql-dev;Database=GoodFood_Auth_Dev;User Id=sa;Password=GoodFood2024!Secure;TrustServerCertificate=true
+      - Jwt__Key=GoodFoodSuperSecretKeyForJwtTokenGeneration2024!AtLeast32Characters
+      - Jwt__Issuer=goodfood
+      - Jwt__Audience=goodfood-api
+    volumes:
+      - ./goodfood-ms-auth:/app
+      - /app/GoodFood.Auth.Api/obj
+      - /app/GoodFood.Auth.Api/bin
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+  ms-restaurant-dev:
+    build:
+      context: ./goodfood-ms-restaurant
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-restaurant-dev
+    ports:
+      - "3002:8080"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app/main.py
+      - DATABASE_URL=mssql+pyodbc://sa:GoodFood2024!Secure@db-sql-dev:1433/GoodFood_Restaurant_Dev?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+    volumes:
+      - ./goodfood-ms-restaurant:/app
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+  ms-paiement-dev:
+    build:
+      context: ./goodfood-ms-paiement
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-paiement-dev
+    ports:
+      - "3003:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - DATABASE_URL=sqlserver://db-sql-dev:1433;database=GoodFood_Paiement_Dev;user=sa;password=GoodFood2024!Secure;trustServerCertificate=true
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
+    volumes:
+      - ./goodfood-ms-paiement:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+  ms-commandes-dev:
+    build:
+      context: ./goodfood-ms-commandes
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-commandes-dev
+    ports:
+      - "3004:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db-sql-dev;Database=GoodFood_Commandes_Dev;User Id=sa;Password=GoodFood2024!Secure;TrustServerCertificate=true
+    volumes:
+      - ./goodfood-ms-commandes:/app
+      - /app/GoodFood.Commandes.Api/obj
+      - /app/GoodFood.Commandes.Api/bin
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+  ms-tracking-dev:
+    build:
+      context: ./goodfood-ms-tracking
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-tracking-dev
+    ports:
+      - "3005:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__MongoDB=mongodb://admin:GoodFood2024!Secure@db-mongo-dev:27017/GoodFood_Tracking_Dev?authSource=admin
+    volumes:
+      - ./goodfood-ms-tracking:/app
+      - /app/GoodFood.Tracking.Api/obj
+      - /app/GoodFood.Tracking.Api/bin
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-mongo-dev:
+        condition: service_healthy
+
+  ms-sav-dev:
+    build:
+      context: ./goodfood-ms-sav
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-sav-dev
+    ports:
+      - "3006:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db-sql-dev;Database=GoodFood_SAV_Dev;User Id=sa;Password=GoodFood2024!Secure;TrustServerCertificate=true
+    volumes:
+      - ./goodfood-ms-sav:/app
+      - /app/GoodFood.Sav.Api/obj
+      - /app/GoodFood.Sav.Api/bin
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+  ms-notifications-dev:
+    build:
+      context: ./goodfood-ms-notifications
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-notifications-dev
+    ports:
+      - "3007:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db-sql-dev;Database=GoodFood_Notifications_Dev;User Id=sa;Password=GoodFood2024!Secure;TrustServerCertificate=true
+    volumes:
+      - ./goodfood-ms-notifications:/app
+      - /app/GoodFood.Notifications.Api/obj
+      - /app/GoodFood.Notifications.Api/bin
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+  ms-logs-dev:
+    build:
+      context: ./goodfood-ms-logs
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-logs-dev
+    ports:
+      - "3008:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db-sql-dev;Database=GoodFood_Logs_Dev;User Id=sa;Password=GoodFood2024!Secure;TrustServerCertificate=true
+    volumes:
+      - ./goodfood-ms-logs:/app
+      - /app/GoodFood.Logs.Api/obj
+      - /app/GoodFood.Logs.Api/bin
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+  ms-stock-dev:
+    build:
+      context: ./goodfood-ms-stock
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-stock-dev
+    ports:
+      - "3009:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db-sql-dev;Database=GoodFood_Stock_Dev;User Id=sa;Password=GoodFood2024!Secure;TrustServerCertificate=true
+    volumes:
+      - ./goodfood-ms-stock:/app
+      - /app/GoodFood.Stock.Api/obj
+      - /app/GoodFood.Stock.Api/bin
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+  ms-fournisseurs-dev:
+    build:
+      context: ./goodfood-ms-fournisseurs
+      dockerfile: Dockerfile.dev
+    container_name: goodfood-ms-fournisseurs-dev
+    ports:
+      - "3010:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db-sql-dev;Database=GoodFood_Fournisseurs_Dev;User Id=sa;Password=GoodFood2024!Secure;TrustServerCertificate=true
+    volumes:
+      - ./goodfood-ms-fournisseurs:/app
+      - /app/GoodFood.Fournisseurs.Api/obj
+      - /app/GoodFood.Fournisseurs.Api/bin
+    networks:
+      - goodfood-dev-network
+    depends_on:
+      db-sql-dev:
+        condition: service_healthy
+
+networks:
+  goodfood-dev-network:
+    driver: bridge
+
+volumes:
+  goodfood-sql-dev-data:
+  goodfood-mongo-dev-data:
