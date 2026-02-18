@@ -1,0 +1,301 @@
+name: CI/CD GoodFood
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # ============================================================
+  # JOB 1 — Build Docker images (validate build, no push)
+  # ============================================================
+  build:
+    name: Build [${{ matrix.service }}]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: front-web
+            context: ./goodfood-front-web
+          - service: ms-auth
+            context: ./goodfood-ms-auth
+          - service: ms-restaurant
+            context: ./goodfood-ms-restaurant
+          - service: ms-paiement
+            context: ./goodfood-ms-paiement
+          - service: ms-commandes
+            context: ./goodfood-ms-commandes
+          - service: ms-tracking
+            context: ./goodfood-ms-tracking
+          - service: ms-sav
+            context: ./goodfood-ms-sav
+          - service: ms-notifications
+            context: ./goodfood-ms-notifications
+          - service: ms-logs
+            context: ./goodfood-ms-logs
+          - service: ms-stock
+            context: ./goodfood-ms-stock
+          - service: ms-fournisseurs
+            context: ./goodfood-ms-fournisseurs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:${{ github.sha }}
+
+  # ============================================================
+  # JOB 2 — Publish images to GHCR (full SHA tag + latest)
+  # ============================================================
+  publish:
+    name: Publish [${{ matrix.service }}]
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: front-web
+            context: ./goodfood-front-web
+          - service: ms-auth
+            context: ./goodfood-ms-auth
+          - service: ms-restaurant
+            context: ./goodfood-ms-restaurant
+          - service: ms-paiement
+            context: ./goodfood-ms-paiement
+          - service: ms-commandes
+            context: ./goodfood-ms-commandes
+          - service: ms-tracking
+            context: ./goodfood-ms-tracking
+          - service: ms-sav
+            context: ./goodfood-ms-sav
+          - service: ms-notifications
+            context: ./goodfood-ms-notifications
+          - service: ms-logs
+            context: ./goodfood-ms-logs
+          - service: ms-stock
+            context: ./goodfood-ms-stock
+          - service: ms-fournisseurs
+            context: ./goodfood-ms-fournisseurs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          cache-from: type=gha,scope=${{ matrix.service }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:latest
+
+  # ============================================================
+  # JOB 3 — SonarCloud scan (parallel with unit-tests)
+  # ============================================================
+  sonarcloud:
+    name: SonarCloud Scan
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=rmurier
+            -Dsonar.projectKey=RMurier_BAC-5-CUBE-1-COLLABORATIF
+            -Dsonar.projectName=BAC-5-CUBE-1-COLLABORATIF
+            -Dsonar.sources=.
+            -Dsonar.host.url=https://sonarcloud.io
+
+  # ============================================================
+  # JOB 4 — Unit tests (parallel with sonarcloud)
+  # ============================================================
+  unit-tests:
+    name: Tests [${{ matrix.service }}]
+    needs: publish
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: ms-auth
+            type: dotnet
+            path: goodfood-ms-auth/GoodFood.Auth.Tests/GoodFood.Auth.Tests.csproj
+          - service: ms-commandes
+            type: dotnet
+            path: goodfood-ms-commandes/GoodFood.Commandes.Tests/GoodFood.Commandes.Tests.csproj
+          - service: ms-fournisseurs
+            type: dotnet
+            path: goodfood-ms-fournisseurs/GoodFood.Fournisseurs.Tests/GoodFood.Fournisseurs.Tests.csproj
+          - service: ms-logs
+            type: dotnet
+            path: goodfood-ms-logs/GoodFood.Logs.Tests/GoodFood.Logs.Tests.csproj
+          - service: ms-notifications
+            type: dotnet
+            path: goodfood-ms-notifications/GoodFood.Notifications.Tests/GoodFood.Notifications.Tests.csproj
+          - service: ms-sav
+            type: dotnet
+            path: goodfood-ms-sav/GoodFood.Sav.Tests/GoodFood.Sav.Tests.csproj
+          - service: ms-stock
+            type: dotnet
+            path: goodfood-ms-stock/GoodFood.Stock.Tests/GoodFood.Stock.Tests.csproj
+          - service: ms-tracking
+            type: dotnet
+            path: goodfood-ms-tracking/GoodFood.Tracking.Tests/GoodFood.Tracking.Tests.csproj
+          - service: ms-restaurant
+            type: python
+            path: goodfood-ms-restaurant
+          - service: front-web
+            type: node-vitest
+            path: goodfood-front-web
+          - service: ms-paiement
+            type: node-jest
+            path: goodfood-ms-paiement
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── .NET ──────────────────────────────────────────────────
+      - name: Setup .NET
+        if: matrix.type == 'dotnet'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Run .NET tests
+        if: matrix.type == 'dotnet'
+        run: dotnet test ${{ matrix.path }} --verbosity normal
+
+      # ── Python ────────────────────────────────────────────────
+      - name: Setup Python
+        if: matrix.type == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        if: matrix.type == 'python'
+        run: pip install -r ${{ matrix.path }}/requirements.txt
+
+      - name: Run Python tests
+        if: matrix.type == 'python'
+        run: pytest ${{ matrix.path }}/tests/
+
+      # ── Node.js — Vitest (front-web) ──────────────────────────
+      - name: Setup Node.js
+        if: matrix.type == 'node-vitest'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: matrix.type == 'node-vitest'
+        run: npm install --prefix ${{ matrix.path }}
+
+      - name: Run Vitest tests
+        if: matrix.type == 'node-vitest'
+        run: npm test --prefix ${{ matrix.path }}
+
+      # ── Node.js — Jest (paiement) ─────────────────────────────
+      - name: Setup Node.js
+        if: matrix.type == 'node-jest'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: matrix.type == 'node-jest'
+        run: npm install --prefix ${{ matrix.path }}
+
+      - name: Run Jest tests
+        if: matrix.type == 'node-jest'
+        run: npm test --prefix ${{ matrix.path }}
+
+  # ============================================================
+  # JOB 5a — Deploy to K3S dev (develop branch only)
+  # ============================================================
+  deploy-dev:
+    name: Deploy [dev]
+    if: github.ref == 'refs/heads/develop'
+    needs: [sonarcloud, unit-tests]
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to K3S — namespace goodfood-dev
+        run: |
+          # TODO: add KUBECONFIG secret and uncomment the commands below
+          # echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+          # export KUBECONFIG=kubeconfig.yaml
+          # helm upgrade --install goodfood ./helm/goodfood \
+          #   --namespace goodfood-dev \
+          #   --create-namespace \
+          #   --set global.image.tag=${{ github.sha }} \
+          #   --set global.registry=${{ env.REGISTRY }}/${{ github.repository_owner }} \
+          #   --values ./helm/goodfood/values.yaml
+          echo "Deploy to K3S namespace goodfood-dev — image tag: ${{ github.sha }}"
+
+  # ============================================================
+  # JOB 5b — Deploy to K3S prod (master branch only)
+  # ============================================================
+  deploy-prod:
+    name: Deploy [prod]
+    if: github.ref == 'refs/heads/master'
+    needs: [sonarcloud, unit-tests]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to K3S — namespace goodfood
+        run: |
+          # TODO: add KUBECONFIG secret and uncomment the commands below
+          # echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+          # export KUBECONFIG=kubeconfig.yaml
+          # helm upgrade --install goodfood ./helm/goodfood \
+          #   --namespace goodfood \
+          #   --create-namespace \
+          #   --set global.image.tag=${{ github.sha }} \
+          #   --set global.registry=${{ env.REGISTRY }}/${{ github.repository_owner }} \
+          #   --values ./helm/goodfood/values-prod.yaml
+          echo "Deploy to K3S namespace goodfood — image tag: ${{ github.sha }}"

@@ -1,8 +1,6 @@
 name: SonarCloud (mono-repo)
 
 on:
-  push:
-    branches: [ "master" ]
   pull_request:
 
 jobs:
