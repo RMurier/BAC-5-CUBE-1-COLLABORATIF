@@ -10,11 +10,8 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  # ============================================================
-  # JOB 1 — Build Docker images (validate build, no push)
-  # ============================================================
   build:
-    name: Build [${{ matrix.service }}]
+    name: Build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -53,7 +50,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.TOKEN_GITHUB }}
 
       - name: Build image
         uses: docker/build-push-action@v6
@@ -64,9 +61,6 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
           tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:${{ github.sha }}
 
-  # ============================================================
-  # JOB 2 — Publish images to GHCR (full SHA tag + latest)
-  # ============================================================
   publish:
     name: Publish [${{ matrix.service }}]
     needs: build
@@ -111,7 +105,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.TOKEN_GITHUB }}
 
       - name: Push image
         uses: docker/build-push-action@v6
@@ -123,9 +117,6 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:latest
 
-  # ============================================================
-  # JOB 3 — SonarCloud scan (parallel with unit-tests)
-  # ============================================================
   sonarcloud:
     name: SonarCloud Scan
     needs: publish
@@ -147,9 +138,6 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.host.url=https://sonarcloud.io
 
-  # ============================================================
-  # JOB 4 — Unit tests (parallel with sonarcloud)
-  # ============================================================
   unit-tests:
     name: Tests [${{ matrix.service }}]
     needs: publish
@@ -194,7 +182,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ── .NET ──────────────────────────────────────────────────
       - name: Setup .NET
         if: matrix.type == 'dotnet'
         uses: actions/setup-dotnet@v4
@@ -205,7 +192,6 @@ jobs:
         if: matrix.type == 'dotnet'
         run: dotnet test ${{ matrix.path }} --verbosity normal
 
-      # ── Python ────────────────────────────────────────────────
       - name: Setup Python
         if: matrix.type == 'python'
         uses: actions/setup-python@v5
@@ -220,7 +206,6 @@ jobs:
         if: matrix.type == 'python'
         run: pytest ${{ matrix.path }}/tests/
 
-      # ── Node.js — Vitest (front-web) ──────────────────────────
       - name: Setup Node.js
         if: matrix.type == 'node-vitest'
         uses: actions/setup-node@v4
@@ -235,7 +220,6 @@ jobs:
         if: matrix.type == 'node-vitest'
         run: npm test --prefix ${{ matrix.path }}
 
-      # ── Node.js — Jest (paiement) ─────────────────────────────
       - name: Setup Node.js
         if: matrix.type == 'node-jest'
         uses: actions/setup-node@v4
@@ -250,15 +234,11 @@ jobs:
         if: matrix.type == 'node-jest'
         run: npm test --prefix ${{ matrix.path }}
 
-  # ============================================================
-  # JOB 5a — Deploy to K3S dev (develop branch only)
-  # ============================================================
   deploy-dev:
     name: Deploy [dev]
     if: github.ref == 'refs/heads/develop'
     needs: [sonarcloud, unit-tests]
     runs-on: ubuntu-latest
-    environment: development
     steps:
       - uses: actions/checkout@v4
 
@@ -275,15 +255,11 @@ jobs:
           #   --values ./helm/goodfood/values.yaml
           echo "Deploy to K3S namespace goodfood-dev — image tag: ${{ github.sha }}"
 
-  # ============================================================
-  # JOB 5b — Deploy to K3S prod (master branch only)
-  # ============================================================
   deploy-prod:
     name: Deploy [prod]
     if: github.ref == 'refs/heads/master'
     needs: [sonarcloud, unit-tests]
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - uses: actions/checkout@v4
 
