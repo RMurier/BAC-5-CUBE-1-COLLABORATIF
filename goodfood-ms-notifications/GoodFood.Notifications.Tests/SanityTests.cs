@@ -1,10 +1,13 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 namespace GoodFood.Notifications.Tests;
 
+[TestClass]
 public class SanityTests
 {
-    [Fact]
+    [TestMethod]
     public void SanityCheck_Pass()
     {
-        Assert.True(true);
+        Assert.IsTrue(true);
     }
 }
