@@ -4,8 +4,8 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore
-RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish --no-restore
+RUN dotnet restore GoodFood.Fournisseurs.Api/GoodFood.Fournisseurs.Api.csproj
+RUN dotnet publish GoodFood.Fournisseurs.Api/GoodFood.Fournisseurs.Api.csproj -c $BUILD_CONFIGURATION -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
