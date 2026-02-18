@@ -42,6 +42,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lowercase registry owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -59,7 +62,7 @@ jobs:
           push: false
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER }}/goodfood-${{ matrix.service }}:${{ github.sha }}
 
   publish:
     name: Publish [${{ matrix.service }}]
@@ -97,6 +100,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lowercase registry owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -114,8 +120,8 @@ jobs:
           push: true
           cache-from: type=gha,scope=${{ matrix.service }}
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/goodfood-${{ matrix.service }}:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/goodfood-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/goodfood-${{ matrix.service }}:latest
 
   sonarcloud:
     name: SonarCloud Scan
@@ -242,6 +248,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lowercase registry owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Deploy to K3S — namespace goodfood-dev
         run: |
           # TODO: add KUBECONFIG secret and uncomment the commands below
@@ -251,7 +260,7 @@ jobs:
           #   --namespace goodfood-dev \
           #   --create-namespace \
           #   --set global.image.tag=${{ github.sha }} \
-          #   --set global.registry=${{ env.REGISTRY }}/${{ github.repository_owner }} \
+          #   --set global.registry=${{ env.REGISTRY }}/${{ env.OWNER }} \
           #   --values ./helm/goodfood/values.yaml
           echo "Deploy to K3S namespace goodfood-dev — image tag: ${{ github.sha }}"
 
@@ -263,6 +272,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lowercase registry owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Deploy to K3S — namespace goodfood
         run: |
           # TODO: add KUBECONFIG secret and uncomment the commands below
@@ -272,6 +284,6 @@ jobs:
           #   --namespace goodfood \
           #   --create-namespace \
           #   --set global.image.tag=${{ github.sha }} \
-          #   --set global.registry=${{ env.REGISTRY }}/${{ github.repository_owner }} \
+          #   --set global.registry=${{ env.REGISTRY }}/${{ env.OWNER }} \
           #   --values ./helm/goodfood/values-prod.yaml
           echo "Deploy to K3S namespace goodfood — image tag: ${{ github.sha }}"
