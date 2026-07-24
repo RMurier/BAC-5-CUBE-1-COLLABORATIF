@@ -255,6 +255,7 @@ jobs:
 
   gitguardian:
     name: GitGuardian Scan
+    needs: detect-changes
     runs-on: ubuntu-latest
     permissions:
       contents: read
