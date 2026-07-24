@@ -1,0 +1,36 @@
+[submodule "goodfood-front-web"]
+	path = goodfood-front-web
+	url = https://github.com/RMurier/goodfood-front-web.git
+[submodule "goodfood-ms-auth"]
+	path = goodfood-ms-auth
+	url = https://github.com/RMurier/goodfood-ms-auth.git
+[submodule "goodfood-ms-commandes"]
+	path = goodfood-ms-commandes
+	url = https://github.com/RMurier/goodfood-ms-commandes.git
+[submodule "goodfood-ms-fournisseurs"]
+	path = goodfood-ms-fournisseurs
+	url = https://github.com/RMurier/goodfood-ms-fournisseurs.git
+[submodule "goodfood-ms-logs"]
+	path = goodfood-ms-logs
+	url = https://github.com/RMurier/goodfood-ms-logs.git
+[submodule "goodfood-ms-notifications"]
+	path = goodfood-ms-notifications
+	url = https://github.com/RMurier/goodfood-ms-notifications.git
+[submodule "goodfood-ms-paiement"]
+	path = goodfood-ms-paiement
+	url = https://github.com/RMurier/goodfood-ms-paiement.git
+[submodule "goodfood-ms-restaurant"]
+	path = goodfood-ms-restaurant
+	url = https://github.com/RMurier/goodfood-ms-restaurant.git
+[submodule "goodfood-ms-sav"]
+	path = goodfood-ms-sav
+	url = https://github.com/RMurier/goodfood-ms-sav.git
+[submodule "goodfood-ms-stock"]
+	path = goodfood-ms-stock
+	url = https://github.com/RMurier/goodfood-ms-stock.git
+[submodule "goodfood-ms-tracking"]
+	path = goodfood-ms-tracking
+	url = https://github.com/RMurier/goodfood-ms-tracking.git
+[submodule "goodfood-mobile"]
+	path = goodfood-mobile
+	url = https://github.com/RMurier/goodfood-mobile.git
