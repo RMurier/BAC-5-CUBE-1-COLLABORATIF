@@ -223,12 +223,18 @@ jobs:
           submodules: recursive
 
       - name: OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@1.1.0
-        with:
-          project: goodfood-${{ matrix.service }}
-          path: ./goodfood-${{ matrix.service }}
-          format: 'HTML'
-          others: '--failOnCVSS 7'
+        run: |
+          mkdir -p reports
+          docker run --rm \
+            -v "${{ github.workspace }}:/src" \
+            -w /src \
+            owasp/dependency-check-action:latest \
+            --project "goodfood-${{ matrix.service }}" \
+            --scan "goodfood-${{ matrix.service }}" \
+            --format HTML \
+            --out reports \
+            --noupdate \
+            --failOnCVSS 7
 
       - name: Upload Dependency-Check report
         if: always()
