@@ -111,7 +111,7 @@ jobs:
           echo "tests_matrix=$TESTS_MATRIX" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build [${{ matrix.service }}]
+    name: Build & Scan Image [${{ matrix.service }}]
     needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
@@ -141,13 +141,23 @@ jobs:
         with:
           context: ./goodfood-${{ matrix.service }}
           push: false
+          load: true
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
           tags: ${{ env.REGISTRY }}/${{ env.OWNER }}/goodfood-${{ matrix.service }}:${{ github.sha }}
 
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER }}/goodfood-${{ matrix.service }}:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
   publish:
     name: Publish [${{ matrix.service }}]
-    needs: [build, detect-changes]
+    needs: [detect-changes, build, sonarqube, dependency-check, gitguardian, unit-tests]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -186,7 +196,7 @@ jobs:
 
   sonarqube:
     name: SonarQube Scan [${{ matrix.service }}]
-    needs: [publish, detect-changes]
+    needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -211,7 +221,7 @@ jobs:
 
   dependency-check:
     name: Dependency Check [${{ matrix.service }}]
-    needs: [publish, detect-changes]
+    needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -245,7 +255,6 @@ jobs:
 
   gitguardian:
     name: GitGuardian Scan
-    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -263,37 +272,9 @@ jobs:
           GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
 
-  trivy:
-    name: Trivy Image Scan [${{ matrix.service }}]
-    needs: [publish, detect-changes]
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
-    steps:
-      - name: Lowercase registry owner
-        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN_GITHUB }}
-
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER }}/goodfood-${{ matrix.service }}:${{ github.sha }}
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-
   unit-tests:
     name: Tests [${{ matrix.service }}]
-    needs: [publish, detect-changes]
+    needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -359,7 +340,7 @@ jobs:
   deploy-dev:
     name: Deploy [dev]
     if: github.ref == 'refs/heads/develop'
-    needs: [sonarqube, unit-tests, dependency-check, gitguardian, trivy]
+    needs: publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -383,7 +364,7 @@ jobs:
   deploy-prod:
     name: Deploy [prod]
     if: github.ref == 'refs/heads/master'
-    needs: [sonarqube, unit-tests, dependency-check, gitguardian, trivy]
+    needs: publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
