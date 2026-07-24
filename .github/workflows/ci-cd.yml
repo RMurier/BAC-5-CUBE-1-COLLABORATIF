@@ -237,9 +237,7 @@ jobs:
           project: goodfood-${{ matrix.service }}
           path: ${{ matrix.context }}
           format: 'HTML'
-          others: >
-            --failOnCVSS 7
-            --enableRetired
+          others: '--failOnCVSS 7'
 
       - name: Upload Dependency-Check report
         if: always()
