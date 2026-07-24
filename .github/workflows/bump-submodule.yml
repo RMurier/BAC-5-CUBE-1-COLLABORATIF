@@ -1,0 +1,53 @@
+name: Bump submodule pointer
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Submodule directory name (e.g. goodfood-ms-auth)
+        required: true
+        type: string
+      sha:
+        description: Commit SHA the submodule should point to
+        required: true
+        type: string
+    secrets:
+      PARENT_REPO_PAT:
+        required: true
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          token: ${{ secrets.PARENT_REPO_PAT }}
+
+      - name: Init target submodule only
+        run: git submodule update --init -- ${{ inputs.service }}
+
+      - name: Bump ${{ inputs.service }} to ${{ inputs.sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C ${{ inputs.service }} fetch --depth 1 origin ${{ inputs.sha }}
+          git -C ${{ inputs.service }} checkout ${{ inputs.sha }}
+          git add ${{ inputs.service }}
+
+          if git diff --cached --quiet; then
+            echo "Already up to date, nothing to commit"
+            exit 0
+          fi
+
+          git commit -m "chore: bump ${{ inputs.service }} to ${{ inputs.sha }}"
+
+          for i in 1 2 3 4 5; do
+            git push origin develop && exit 0
+            echo "Push rejected, retrying with rebase ($i/5)..."
+            git fetch origin develop
+            git rebase origin/develop
+          done
+
+          echo "Failed to push after retries" >&2
+          exit 1
