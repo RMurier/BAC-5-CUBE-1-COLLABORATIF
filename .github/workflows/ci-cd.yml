@@ -41,6 +41,8 @@ jobs:
             context: ./goodfood-ms-fournisseurs
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Lowercase registry owner
         run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -99,6 +101,8 @@ jobs:
             context: ./goodfood-ms-fournisseurs
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Lowercase registry owner
         run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -131,6 +135,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
@@ -187,6 +192,8 @@ jobs:
             path: goodfood-ms-paiement
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup .NET
         if: matrix.type == 'dotnet'
