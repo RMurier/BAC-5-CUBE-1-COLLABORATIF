@@ -196,6 +196,117 @@ jobs:
             -Dsonar.projectKey=${{ matrix.projectKey }}
             -Dsonar.projectName=${{ matrix.projectKey }}
 
+  dependency-check:
+    name: Dependency Check [${{ matrix.service }}]
+    needs: publish
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: front-web
+            context: ./goodfood-front-web
+          - service: ms-auth
+            context: ./goodfood-ms-auth
+          - service: ms-restaurant
+            context: ./goodfood-ms-restaurant
+          - service: ms-paiement
+            context: ./goodfood-ms-paiement
+          - service: ms-commandes
+            context: ./goodfood-ms-commandes
+          - service: ms-tracking
+            context: ./goodfood-ms-tracking
+          - service: ms-sav
+            context: ./goodfood-ms-sav
+          - service: ms-notifications
+            context: ./goodfood-ms-notifications
+          - service: ms-logs
+            context: ./goodfood-ms-logs
+          - service: ms-stock
+            context: ./goodfood-ms-stock
+          - service: ms-fournisseurs
+            context: ./goodfood-ms-fournisseurs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@1.1.0
+        with:
+          project: goodfood-${{ matrix.service }}
+          path: ${{ matrix.context }}
+          format: 'HTML'
+          others: >
+            --failOnCVSS 7
+            --enableRetired
+
+      - name: Upload Dependency-Check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-${{ matrix.service }}
+          path: ${{ github.workspace }}/reports
+
+  gitguardian:
+    name: GitGuardian Scan
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: GitGuardian scan
+        uses: GitGuardian/ggshield-action@v1.52.2
+        env:
+          GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
+          GITHUB_PUSH_BASE_SHA: ${{ github.event.base }}
+          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+
+  trivy:
+    name: Trivy Image Scan [${{ matrix.service }}]
+    needs: publish
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: front-web
+          - service: ms-auth
+          - service: ms-restaurant
+          - service: ms-paiement
+          - service: ms-commandes
+          - service: ms-tracking
+          - service: ms-sav
+          - service: ms-notifications
+          - service: ms-logs
+          - service: ms-stock
+          - service: ms-fournisseurs
+    steps:
+      - name: Lowercase registry owner
+        run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN_GITHUB }}
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER }}/goodfood-${{ matrix.service }}:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
   unit-tests:
     name: Tests [${{ matrix.service }}]
     needs: publish
@@ -297,7 +408,7 @@ jobs:
   deploy-dev:
     name: Deploy [dev]
     if: github.ref == 'refs/heads/develop'
-    needs: [sonarqube, unit-tests]
+    needs: [sonarqube, unit-tests, dependency-check, gitguardian, trivy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -321,7 +432,7 @@ jobs:
   deploy-prod:
     name: Deploy [prod]
     if: github.ref == 'refs/heads/master'
-    needs: [sonarqube, unit-tests]
+    needs: [sonarqube, unit-tests, dependency-check, gitguardian, trivy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
