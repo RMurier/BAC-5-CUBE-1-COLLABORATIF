@@ -10,35 +10,114 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  detect-changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+      sonar_matrix: ${{ steps.matrices.outputs.sonar_matrix }}
+      tests_matrix: ${{ steps.matrices.outputs.tests_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect changed submodules
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          base: ${{ github.ref_name }}
+          filters: |
+            front-web:
+              - goodfood-front-web
+              - goodfood-front-web/**
+              - .github/workflows/ci-cd.yml
+            ms-auth:
+              - goodfood-ms-auth
+              - goodfood-ms-auth/**
+              - .github/workflows/ci-cd.yml
+            ms-restaurant:
+              - goodfood-ms-restaurant
+              - goodfood-ms-restaurant/**
+              - .github/workflows/ci-cd.yml
+            ms-paiement:
+              - goodfood-ms-paiement
+              - goodfood-ms-paiement/**
+              - .github/workflows/ci-cd.yml
+            ms-commandes:
+              - goodfood-ms-commandes
+              - goodfood-ms-commandes/**
+              - .github/workflows/ci-cd.yml
+            ms-tracking:
+              - goodfood-ms-tracking
+              - goodfood-ms-tracking/**
+              - .github/workflows/ci-cd.yml
+            ms-sav:
+              - goodfood-ms-sav
+              - goodfood-ms-sav/**
+              - .github/workflows/ci-cd.yml
+            ms-notifications:
+              - goodfood-ms-notifications
+              - goodfood-ms-notifications/**
+              - .github/workflows/ci-cd.yml
+            ms-logs:
+              - goodfood-ms-logs
+              - goodfood-ms-logs/**
+              - .github/workflows/ci-cd.yml
+            ms-stock:
+              - goodfood-ms-stock
+              - goodfood-ms-stock/**
+              - .github/workflows/ci-cd.yml
+            ms-fournisseurs:
+              - goodfood-ms-fournisseurs
+              - goodfood-ms-fournisseurs/**
+              - .github/workflows/ci-cd.yml
+
+      - name: Build per-job matrices
+        id: matrices
+        env:
+          CHANGED: ${{ steps.filter.outputs.changes }}
+        run: |
+          SONAR_TABLE='[
+            {"service":"front-web","context":"./goodfood-front-web","projectKey":"goodfood-front-web","token":"SONAR_TOKEN_FRONT_WEB"},
+            {"service":"ms-auth","context":"./goodfood-ms-auth","projectKey":"goodfood-ms-auth","token":"SONAR_TOKEN_MS_AUTH"},
+            {"service":"ms-restaurant","context":"./goodfood-ms-restaurant","projectKey":"goodfood-ms-restaurant","token":"SONAR_TOKEN_MS_RESTAURANT"},
+            {"service":"ms-paiement","context":"./goodfood-ms-paiement","projectKey":"goodfood-ms-paiement","token":"SONAR_TOKEN_MS_PAIEMENT"},
+            {"service":"ms-commandes","context":"./goodfood-ms-commandes","projectKey":"goodfood-ms-commandes","token":"SONAR_TOKEN_MS_COMMANDES"},
+            {"service":"ms-tracking","context":"./goodfood-ms-tracking","projectKey":"goodfood-ms-tracking","token":"SONAR_TOKEN_MS_TRACKING"},
+            {"service":"ms-sav","context":"./goodfood-ms-sav","projectKey":"goodfood-ms-sav","token":"SONAR_TOKEN_MS_SAV"},
+            {"service":"ms-notifications","context":"./goodfood-ms-notifications","projectKey":"goodfood-ms-notifications","token":"SONAR_TOKEN_MS_NOTIFICATIONS"},
+            {"service":"ms-logs","context":"./goodfood-ms-logs","projectKey":"goodfood-ms-logs","token":"SONAR_TOKEN_MS_LOGS"},
+            {"service":"ms-stock","context":"./goodfood-ms-stock","projectKey":"goodfood-ms-stock","token":"SONAR_TOKEN_MS_STOCK"},
+            {"service":"ms-fournisseurs","context":"./goodfood-ms-fournisseurs","projectKey":"goodfood-ms-fournisseur","token":"SONAR_TOKEN_MS_FOURNISSEURS"}
+          ]'
+
+          TESTS_TABLE='[
+            {"service":"ms-auth","type":"dotnet","path":"goodfood-ms-auth/GoodFood.Auth.Tests/GoodFood.Auth.Tests.csproj"},
+            {"service":"ms-commandes","type":"dotnet","path":"goodfood-ms-commandes/GoodFood.Commandes.Tests/GoodFood.Commandes.Tests.csproj"},
+            {"service":"ms-fournisseurs","type":"dotnet","path":"goodfood-ms-fournisseurs/GoodFood.Fournisseurs.Tests/GoodFood.Fournisseurs.Tests.csproj"},
+            {"service":"ms-logs","type":"dotnet","path":"goodfood-ms-logs/GoodFood.Logs.Tests/GoodFood.Logs.Tests.csproj"},
+            {"service":"ms-notifications","type":"dotnet","path":"goodfood-ms-notifications/GoodFood.Notifications.Tests/GoodFood.Notifications.Tests.csproj"},
+            {"service":"ms-sav","type":"dotnet","path":"goodfood-ms-sav/GoodFood.Sav.Tests/GoodFood.Sav.Tests.csproj"},
+            {"service":"ms-stock","type":"dotnet","path":"goodfood-ms-stock/GoodFood.Stock.Tests/GoodFood.Stock.Tests.csproj"},
+            {"service":"ms-tracking","type":"dotnet","path":"goodfood-ms-tracking/GoodFood.Tracking.Tests/GoodFood.Tracking.Tests.csproj"},
+            {"service":"ms-restaurant","type":"python","path":"goodfood-ms-restaurant"},
+            {"service":"front-web","type":"node-vitest","path":"goodfood-front-web"},
+            {"service":"ms-paiement","type":"node-jest","path":"goodfood-ms-paiement"}
+          ]'
+
+          SONAR_MATRIX=$(echo "$SONAR_TABLE" | jq -c --argjson changed "$CHANGED" '[.[] | select(.service as $s | $changed | index($s) != null)]')
+          TESTS_MATRIX=$(echo "$TESTS_TABLE" | jq -c --argjson changed "$CHANGED" '[.[] | select(.service as $s | $changed | index($s) != null)]')
+
+          echo "sonar_matrix=$SONAR_MATRIX" >> "$GITHUB_OUTPUT"
+          echo "tests_matrix=$TESTS_MATRIX" >> "$GITHUB_OUTPUT"
+
   build:
-    name: Build
+    name: Build [${{ matrix.service }}]
+    needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: front-web
-            context: ./goodfood-front-web
-          - service: ms-auth
-            context: ./goodfood-ms-auth
-          - service: ms-restaurant
-            context: ./goodfood-ms-restaurant
-          - service: ms-paiement
-            context: ./goodfood-ms-paiement
-          - service: ms-commandes
-            context: ./goodfood-ms-commandes
-          - service: ms-tracking
-            context: ./goodfood-ms-tracking
-          - service: ms-sav
-            context: ./goodfood-ms-sav
-          - service: ms-notifications
-            context: ./goodfood-ms-notifications
-          - service: ms-logs
-            context: ./goodfood-ms-logs
-          - service: ms-stock
-            context: ./goodfood-ms-stock
-          - service: ms-fournisseurs
-            context: ./goodfood-ms-fournisseurs
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,7 +139,7 @@ jobs:
       - name: Build image
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
+          context: ./goodfood-${{ matrix.service }}
           push: false
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
@@ -68,7 +147,7 @@ jobs:
 
   publish:
     name: Publish [${{ matrix.service }}]
-    needs: build
+    needs: [build, detect-changes]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -76,29 +155,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: front-web
-            context: ./goodfood-front-web
-          - service: ms-auth
-            context: ./goodfood-ms-auth
-          - service: ms-restaurant
-            context: ./goodfood-ms-restaurant
-          - service: ms-paiement
-            context: ./goodfood-ms-paiement
-          - service: ms-commandes
-            context: ./goodfood-ms-commandes
-          - service: ms-tracking
-            context: ./goodfood-ms-tracking
-          - service: ms-sav
-            context: ./goodfood-ms-sav
-          - service: ms-notifications
-            context: ./goodfood-ms-notifications
-          - service: ms-logs
-            context: ./goodfood-ms-logs
-          - service: ms-stock
-            context: ./goodfood-ms-stock
-          - service: ms-fournisseurs
-            context: ./goodfood-ms-fournisseurs
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -120,7 +177,7 @@ jobs:
       - name: Push image
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
+          context: ./goodfood-${{ matrix.service }}
           push: true
           cache-from: type=gha,scope=${{ matrix.service }}
           tags: |
@@ -129,56 +186,12 @@ jobs:
 
   sonarqube:
     name: SonarQube Scan [${{ matrix.service }}]
-    needs: publish
+    needs: [publish, detect-changes]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: front-web
-            context: ./goodfood-front-web
-            projectKey: goodfood-front-web
-            token: SONAR_TOKEN_FRONT_WEB
-          - service: ms-auth
-            context: ./goodfood-ms-auth
-            projectKey: goodfood-ms-auth
-            token: SONAR_TOKEN_MS_AUTH
-          - service: ms-restaurant
-            context: ./goodfood-ms-restaurant
-            projectKey: goodfood-ms-restaurant
-            token: SONAR_TOKEN_MS_RESTAURANT
-          - service: ms-paiement
-            context: ./goodfood-ms-paiement
-            projectKey: goodfood-ms-paiement
-            token: SONAR_TOKEN_MS_PAIEMENT
-          - service: ms-commandes
-            context: ./goodfood-ms-commandes
-            projectKey: goodfood-ms-commandes
-            token: SONAR_TOKEN_MS_COMMANDES
-          - service: ms-tracking
-            context: ./goodfood-ms-tracking
-            projectKey: goodfood-ms-tracking
-            token: SONAR_TOKEN_MS_TRACKING
-          - service: ms-sav
-            context: ./goodfood-ms-sav
-            projectKey: goodfood-ms-sav
-            token: SONAR_TOKEN_MS_SAV
-          - service: ms-notifications
-            context: ./goodfood-ms-notifications
-            projectKey: goodfood-ms-notifications
-            token: SONAR_TOKEN_MS_NOTIFICATIONS
-          - service: ms-logs
-            context: ./goodfood-ms-logs
-            projectKey: goodfood-ms-logs
-            token: SONAR_TOKEN_MS_LOGS
-          - service: ms-stock
-            context: ./goodfood-ms-stock
-            projectKey: goodfood-ms-stock
-            token: SONAR_TOKEN_MS_STOCK
-          - service: ms-fournisseurs
-            context: ./goodfood-ms-fournisseurs
-            projectKey: goodfood-ms-fournisseur
-            token: SONAR_TOKEN_MS_FOURNISSEURS
+        include: ${{ fromJSON(needs.detect-changes.outputs.sonar_matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -198,34 +211,12 @@ jobs:
 
   dependency-check:
     name: Dependency Check [${{ matrix.service }}]
-    needs: publish
+    needs: [publish, detect-changes]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: front-web
-            context: ./goodfood-front-web
-          - service: ms-auth
-            context: ./goodfood-ms-auth
-          - service: ms-restaurant
-            context: ./goodfood-ms-restaurant
-          - service: ms-paiement
-            context: ./goodfood-ms-paiement
-          - service: ms-commandes
-            context: ./goodfood-ms-commandes
-          - service: ms-tracking
-            context: ./goodfood-ms-tracking
-          - service: ms-sav
-            context: ./goodfood-ms-sav
-          - service: ms-notifications
-            context: ./goodfood-ms-notifications
-          - service: ms-logs
-            context: ./goodfood-ms-logs
-          - service: ms-stock
-            context: ./goodfood-ms-stock
-          - service: ms-fournisseurs
-            context: ./goodfood-ms-fournisseurs
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -235,11 +226,9 @@ jobs:
         uses: dependency-check/Dependency-Check_Action@1.1.0
         with:
           project: goodfood-${{ matrix.service }}
-          path: ${{ matrix.context }}
+          path: ./goodfood-${{ matrix.service }}
           format: 'HTML'
-          others: >
-            --failOnCVSS 7
-            --enableRetired
+          others: '--failOnCVSS 7'
 
       - name: Upload Dependency-Check report
         if: always()
@@ -270,23 +259,12 @@ jobs:
 
   trivy:
     name: Trivy Image Scan [${{ matrix.service }}]
-    needs: publish
+    needs: [publish, detect-changes]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: front-web
-          - service: ms-auth
-          - service: ms-restaurant
-          - service: ms-paiement
-          - service: ms-commandes
-          - service: ms-tracking
-          - service: ms-sav
-          - service: ms-notifications
-          - service: ms-logs
-          - service: ms-stock
-          - service: ms-fournisseurs
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
     steps:
       - name: Lowercase registry owner
         run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -309,45 +287,12 @@ jobs:
 
   unit-tests:
     name: Tests [${{ matrix.service }}]
-    needs: publish
+    needs: [publish, detect-changes]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: ms-auth
-            type: dotnet
-            path: goodfood-ms-auth/GoodFood.Auth.Tests/GoodFood.Auth.Tests.csproj
-          - service: ms-commandes
-            type: dotnet
-            path: goodfood-ms-commandes/GoodFood.Commandes.Tests/GoodFood.Commandes.Tests.csproj
-          - service: ms-fournisseurs
-            type: dotnet
-            path: goodfood-ms-fournisseurs/GoodFood.Fournisseurs.Tests/GoodFood.Fournisseurs.Tests.csproj
-          - service: ms-logs
-            type: dotnet
-            path: goodfood-ms-logs/GoodFood.Logs.Tests/GoodFood.Logs.Tests.csproj
-          - service: ms-notifications
-            type: dotnet
-            path: goodfood-ms-notifications/GoodFood.Notifications.Tests/GoodFood.Notifications.Tests.csproj
-          - service: ms-sav
-            type: dotnet
-            path: goodfood-ms-sav/GoodFood.Sav.Tests/GoodFood.Sav.Tests.csproj
-          - service: ms-stock
-            type: dotnet
-            path: goodfood-ms-stock/GoodFood.Stock.Tests/GoodFood.Stock.Tests.csproj
-          - service: ms-tracking
-            type: dotnet
-            path: goodfood-ms-tracking/GoodFood.Tracking.Tests/GoodFood.Tracking.Tests.csproj
-          - service: ms-restaurant
-            type: python
-            path: goodfood-ms-restaurant
-          - service: front-web
-            type: node-vitest
-            path: goodfood-front-web
-          - service: ms-paiement
-            type: node-jest
-            path: goodfood-ms-paiement
+        include: ${{ fromJSON(needs.detect-changes.outputs.tests_matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
