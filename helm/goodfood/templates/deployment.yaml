@@ -33,6 +33,10 @@ spec:
             - secretRef:
                 name: {{ include "goodfood.fullname" $ }}-secrets
             {{- end }}
+            {{- if $svc.dbSecretName }}
+            - secretRef:
+                name: {{ $svc.dbSecretName }}
+            {{- end }}
           {{- if $svc.env }}
           env:
             {{- range $k, $v := $svc.env }}

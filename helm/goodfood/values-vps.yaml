@@ -27,6 +27,7 @@ services:
     service:
       type: NodePort
       nodePort: 30081
+    dbSecretName: ms-auth-db
     resources:
       requests: { cpu: "30m", memory: "100Mi" }
       limits: { cpu: "300m", memory: "220Mi" }
@@ -35,6 +36,7 @@ services:
     service:
       type: NodePort
       nodePort: 30082
+    dbSecretName: ms-commandes-db
     resources:
       requests: { cpu: "30m", memory: "100Mi" }
       limits: { cpu: "300m", memory: "220Mi" }
@@ -43,6 +45,7 @@ services:
     service:
       type: NodePort
       nodePort: 30083
+    dbSecretName: ms-tracking-db
     resources:
       requests: { cpu: "30m", memory: "100Mi" }
       limits: { cpu: "300m", memory: "220Mi" }
@@ -51,6 +54,7 @@ services:
     service:
       type: NodePort
       nodePort: 30084
+    dbSecretName: ms-sav-db
     resources:
       requests: { cpu: "30m", memory: "100Mi" }
       limits: { cpu: "300m", memory: "220Mi" }
@@ -59,6 +63,7 @@ services:
     service:
       type: NodePort
       nodePort: 30085
+    dbSecretName: ms-notifications-db
     resources:
       requests: { cpu: "30m", memory: "100Mi" }
       limits: { cpu: "300m", memory: "220Mi" }
@@ -67,6 +72,7 @@ services:
     service:
       type: NodePort
       nodePort: 30086
+    dbSecretName: ms-logs-db
     resources:
       requests: { cpu: "30m", memory: "100Mi" }
       limits: { cpu: "300m", memory: "220Mi" }
@@ -75,6 +81,7 @@ services:
     service:
       type: NodePort
       nodePort: 30087
+    dbSecretName: ms-stock-db
     resources:
       requests: { cpu: "30m", memory: "100Mi" }
       limits: { cpu: "300m", memory: "220Mi" }
@@ -83,6 +90,7 @@ services:
     service:
       type: NodePort
       nodePort: 30088
+    dbSecretName: ms-fournisseurs-db
     resources:
       requests: { cpu: "30m", memory: "100Mi" }
       limits: { cpu: "300m", memory: "220Mi" }
@@ -91,6 +99,7 @@ services:
     service:
       type: NodePort
       nodePort: 30089
+    dbSecretName: ms-paiement-db
     resources:
       requests: { cpu: "30m", memory: "150Mi" }
       limits: { cpu: "300m", memory: "300Mi" }
@@ -99,6 +108,7 @@ services:
     service:
       type: NodePort
       nodePort: 30090
+    dbSecretName: ms-restaurant-db
     resources:
       requests: { cpu: "20m", memory: "80Mi" }
       limits: { cpu: "300m", memory: "200Mi" }

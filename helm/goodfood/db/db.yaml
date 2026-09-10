@@ -1,0 +1,139 @@
+# Shared SQL Server 2022 + MongoDB 7 for the goodfood namespace.
+# Single instance shared by prod (goodfood namespace) AND dev (goodfood-dev
+# namespace, via cross-namespace DNS: db-sql.goodfood.svc.cluster.local) -
+# the VPS doesn't have RAM for two full SQL Server instances. Dev databases
+# use a "_Dev" suffix on the same instance.
+#
+# Not part of the goodfood Helm chart (this is shared infra, not an
+# app service) - applied directly with kubectl in the goodfood namespace.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-sql-data
+  namespace: goodfood
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 8Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db-sql
+  namespace: goodfood
+spec:
+  serviceName: db-sql
+  replicas: 1
+  selector:
+    matchLabels: { app: db-sql }
+  template:
+    metadata:
+      labels: { app: db-sql }
+    spec:
+      containers:
+        - name: db-sql
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: MSSQL_PID
+              value: "Developer"
+            - name: MSSQL_MEMORY_LIMIT_MB
+              value: "1536"
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db-sql-credentials, key: sa-password }
+          ports:
+            - containerPort: 1433
+          volumeMounts:
+            - name: db-sql-data
+              mountPath: /var/opt/mssql
+          resources:
+            requests: { cpu: "100m", memory: "1Gi" }
+            limits: { cpu: "1", memory: "1800Mi" }
+          readinessProbe:
+            exec:
+              command: ["/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "$(MSSQL_SA_PASSWORD)", "-C", "-Q", "SELECT 1"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 12
+      volumes:
+        - name: db-sql-data
+          persistentVolumeClaim: { claimName: db-sql-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-sql
+  namespace: goodfood
+spec:
+  selector: { app: db-sql }
+  ports:
+    - port: 1433
+      targetPort: 1433
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-mongo-data
+  namespace: goodfood
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db-mongo
+  namespace: goodfood
+spec:
+  serviceName: db-mongo
+  replicas: 1
+  selector:
+    matchLabels: { app: db-mongo }
+  template:
+    metadata:
+      labels: { app: db-mongo }
+    spec:
+      containers:
+        - name: db-mongo
+          image: mongo:7
+          args: ["--wiredTigerCacheSizeGB", "0.25"]
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: admin
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: db-mongo-credentials, key: root-password }
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: db-mongo-data
+              mountPath: /data/db
+          resources:
+            requests: { cpu: "20m", memory: "150Mi" }
+            limits: { cpu: "300m", memory: "400Mi" }
+          readinessProbe:
+            exec:
+              command: ["mongosh", "--eval", "db.runCommand('ping').ok", "--quiet"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+      volumes:
+        - name: db-mongo-data
+          persistentVolumeClaim: { claimName: db-mongo-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-mongo
+  namespace: goodfood
+spec:
+  selector: { app: db-mongo }
+  ports:
+    - port: 27017
+      targetPort: 27017
