@@ -1,0 +1,91 @@
+# Dev-environment overrides for the airflow.romainmurier.com VPS.
+# Usage: helm upgrade --install goodfood-dev ./helm/goodfood -n goodfood-dev --create-namespace \
+#          -f values-vps.yaml -f values-vps-dev.yaml
+#
+# Layered on top of values-vps.yaml: same NodePort pattern but offset by +100 so it
+# doesn't collide with the prod release, image tag tracks the `dev` branch, and
+# resource limits are trimmed further since this VPS is already tight on RAM with
+# prod goodfood + Airflow (prod/dev) + SonarQube all resident.
+
+global:
+  environment: development
+  commonEnv:
+    ASPNETCORE_ENVIRONMENT: "Development"
+
+services:
+  frontWeb:
+    image: { tag: dev }
+    service: { nodePort: 30180 }
+    resources:
+      requests: { cpu: "10m", memory: "16Mi" }
+      limits: { cpu: "100m", memory: "64Mi" }
+
+  msAuth:
+    image: { tag: dev }
+    service: { nodePort: 30181 }
+    resources:
+      requests: { cpu: "20m", memory: "70Mi" }
+      limits: { cpu: "200m", memory: "150Mi" }
+
+  msCommandes:
+    image: { tag: dev }
+    service: { nodePort: 30182 }
+    resources:
+      requests: { cpu: "20m", memory: "70Mi" }
+      limits: { cpu: "200m", memory: "150Mi" }
+
+  msTracking:
+    image: { tag: dev }
+    service: { nodePort: 30183 }
+    resources:
+      requests: { cpu: "20m", memory: "70Mi" }
+      limits: { cpu: "200m", memory: "150Mi" }
+
+  msSav:
+    image: { tag: dev }
+    service: { nodePort: 30184 }
+    resources:
+      requests: { cpu: "20m", memory: "70Mi" }
+      limits: { cpu: "200m", memory: "150Mi" }
+
+  msNotifications:
+    image: { tag: dev }
+    service: { nodePort: 30185 }
+    resources:
+      requests: { cpu: "20m", memory: "70Mi" }
+      limits: { cpu: "200m", memory: "150Mi" }
+
+  msLogs:
+    image: { tag: dev }
+    service: { nodePort: 30186 }
+    resources:
+      requests: { cpu: "20m", memory: "70Mi" }
+      limits: { cpu: "200m", memory: "150Mi" }
+
+  msStock:
+    image: { tag: dev }
+    service: { nodePort: 30187 }
+    resources:
+      requests: { cpu: "20m", memory: "70Mi" }
+      limits: { cpu: "200m", memory: "150Mi" }
+
+  msFournisseurs:
+    image: { tag: dev }
+    service: { nodePort: 30188 }
+    resources:
+      requests: { cpu: "20m", memory: "70Mi" }
+      limits: { cpu: "200m", memory: "150Mi" }
+
+  msPaiement:
+    image: { tag: dev }
+    service: { nodePort: 30189 }
+    resources:
+      requests: { cpu: "20m", memory: "100Mi" }
+      limits: { cpu: "200m", memory: "200Mi" }
+
+  msRestaurant:
+    image: { tag: dev }
+    service: { nodePort: 30190 }
+    resources:
+      requests: { cpu: "15m", memory: "60Mi" }
+      limits: { cpu: "200m", memory: "140Mi" }

@@ -23,7 +23,7 @@ services:
     path: /
     image:
       repository: ghcr.io/rmurier/goodfood-front-web
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     probes:
@@ -38,7 +38,7 @@ services:
     path: /api/auth
     image:
       repository: ghcr.io/rmurier/goodfood-ms-auth
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -55,7 +55,7 @@ services:
     path: /api/commandes
     image:
       repository: ghcr.io/rmurier/goodfood-ms-commandes
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -72,7 +72,7 @@ services:
     path: /api/tracking
     image:
       repository: ghcr.io/rmurier/goodfood-ms-tracking
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -89,7 +89,7 @@ services:
     path: /api/sav
     image:
       repository: ghcr.io/rmurier/goodfood-ms-sav
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -106,7 +106,7 @@ services:
     path: /api/notifications
     image:
       repository: ghcr.io/rmurier/goodfood-ms-notifications
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -123,7 +123,7 @@ services:
     path: /api/logs
     image:
       repository: ghcr.io/rmurier/goodfood-ms-logs
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -140,7 +140,7 @@ services:
     path: /api/stock
     image:
       repository: ghcr.io/rmurier/goodfood-ms-stock
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -157,7 +157,7 @@ services:
     path: /api/fournisseurs
     image:
       repository: ghcr.io/rmurier/goodfood-ms-fournisseurs
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -174,7 +174,7 @@ services:
     path: /api/paiement
     image:
       repository: ghcr.io/rmurier/goodfood-ms-paiement
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     env:
@@ -192,7 +192,7 @@ services:
     path: /api/restaurant
     image:
       repository: ghcr.io/rmurier/goodfood-ms-restaurant
-      tag: latest
+      tag: main
       pullPolicy: IfNotPresent
     replicas: 1
     probes:
