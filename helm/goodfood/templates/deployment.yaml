@@ -50,17 +50,17 @@ spec:
           {{- end }}
           {{- if and $svc.probes $svc.probes.enabled }}
           readinessProbe:
-            httpGet:
-              path: {{ $svc.probes.path | default "/health" }}
+            tcpSocket:
               port: {{ $svc.port | default 8080 }}
             initialDelaySeconds: 5
             periodSeconds: 10
+            failureThreshold: 6
           livenessProbe:
-            httpGet:
-              path: {{ $svc.probes.path | default "/health" }}
+            tcpSocket:
               port: {{ $svc.port | default 8080 }}
-            initialDelaySeconds: 15
+            initialDelaySeconds: 20
             periodSeconds: 20
+            failureThreshold: 6
           {{- end }}
 ---
 {{- end }}
