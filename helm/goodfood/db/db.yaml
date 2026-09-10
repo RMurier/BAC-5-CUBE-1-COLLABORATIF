@@ -58,6 +58,7 @@ spec:
               command: ["/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "$(MSSQL_SA_PASSWORD)", "-C", "-Q", "SELECT 1"]
             initialDelaySeconds: 20
             periodSeconds: 10
+            timeoutSeconds: 8
             failureThreshold: 12
       volumes:
         - name: db-sql-data
@@ -122,6 +123,7 @@ spec:
               command: ["mongosh", "--eval", "db.runCommand('ping').ok", "--quiet"]
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 8
             failureThreshold: 6
       volumes:
         - name: db-mongo-data
