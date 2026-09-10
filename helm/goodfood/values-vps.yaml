@@ -1,0 +1,104 @@
+# Overrides for the airflow.romainmurier.com VPS.
+# Usage: helm upgrade --install goodfood ./helm/goodfood -n goodfood --create-namespace -f values-vps.yaml
+#
+# No k3s Ingress is used here: the host already runs a Traefik instance (Docker)
+# that fronts every other service on this box. Each service below is exposed as a
+# fixed NodePort, and Traefik's file-provider dynamic.yml routes
+# <service>.goodfood.romainmurier.com -> 172.18.0.1:<nodePort> (the k3s host reached
+# through the docker bridge gateway that Traefik itself sits on).
+#
+# RAM on this box is tight (~2.2Gi available alongside Airflow prod/dev + SonarQube),
+# so resource limits are deliberately conservative and every service runs a single
+# replica.
+
+ingress:
+  enabled: false
+
+services:
+  frontWeb:
+    service:
+      type: NodePort
+      nodePort: 30080
+    resources:
+      requests: { cpu: "10m", memory: "24Mi" }
+      limits: { cpu: "200m", memory: "96Mi" }
+
+  msAuth:
+    service:
+      type: NodePort
+      nodePort: 30081
+    resources:
+      requests: { cpu: "30m", memory: "100Mi" }
+      limits: { cpu: "300m", memory: "220Mi" }
+
+  msCommandes:
+    service:
+      type: NodePort
+      nodePort: 30082
+    resources:
+      requests: { cpu: "30m", memory: "100Mi" }
+      limits: { cpu: "300m", memory: "220Mi" }
+
+  msTracking:
+    service:
+      type: NodePort
+      nodePort: 30083
+    resources:
+      requests: { cpu: "30m", memory: "100Mi" }
+      limits: { cpu: "300m", memory: "220Mi" }
+
+  msSav:
+    service:
+      type: NodePort
+      nodePort: 30084
+    resources:
+      requests: { cpu: "30m", memory: "100Mi" }
+      limits: { cpu: "300m", memory: "220Mi" }
+
+  msNotifications:
+    service:
+      type: NodePort
+      nodePort: 30085
+    resources:
+      requests: { cpu: "30m", memory: "100Mi" }
+      limits: { cpu: "300m", memory: "220Mi" }
+
+  msLogs:
+    service:
+      type: NodePort
+      nodePort: 30086
+    resources:
+      requests: { cpu: "30m", memory: "100Mi" }
+      limits: { cpu: "300m", memory: "220Mi" }
+
+  msStock:
+    service:
+      type: NodePort
+      nodePort: 30087
+    resources:
+      requests: { cpu: "30m", memory: "100Mi" }
+      limits: { cpu: "300m", memory: "220Mi" }
+
+  msFournisseurs:
+    service:
+      type: NodePort
+      nodePort: 30088
+    resources:
+      requests: { cpu: "30m", memory: "100Mi" }
+      limits: { cpu: "300m", memory: "220Mi" }
+
+  msPaiement:
+    service:
+      type: NodePort
+      nodePort: 30089
+    resources:
+      requests: { cpu: "30m", memory: "150Mi" }
+      limits: { cpu: "300m", memory: "300Mi" }
+
+  msRestaurant:
+    service:
+      type: NodePort
+      nodePort: 30090
+    resources:
+      requests: { cpu: "20m", memory: "80Mi" }
+      limits: { cpu: "300m", memory: "200Mi" }

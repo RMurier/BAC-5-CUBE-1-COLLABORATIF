@@ -7,12 +7,16 @@ metadata:
   labels:
     app: {{ $svc.name }}
 spec:
+  type: {{ ($svc.service).type | default "ClusterIP" }}
   selector:
     app: {{ $svc.name }}
   ports:
     - name: http
       port: {{ $svc.port | default 8080 }}
       targetPort: {{ $svc.port | default 8080 }}
+      {{- if and (eq (($svc.service).type | default "ClusterIP") "NodePort") ($svc.service).nodePort }}
+      nodePort: {{ ($svc.service).nodePort }}
+      {{- end }}
 ---
 {{- end }}
 {{- end }}

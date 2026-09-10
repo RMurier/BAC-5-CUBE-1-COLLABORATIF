@@ -40,6 +40,10 @@ spec:
               value: {{ $v | quote }}
             {{- end }}
           {{- end }}
+          {{- if $svc.resources }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          {{- end }}
           {{- if and $svc.probes $svc.probes.enabled }}
           readinessProbe:
             httpGet:
